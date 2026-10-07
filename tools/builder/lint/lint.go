@@ -72,6 +72,9 @@ func Lint(opts Options) error {
 		shared = append(shared, sh...)
 	}
 	if len(shared) > 0 {
+		if err := validateAliasDeclarations([][]Symbol{shared}); err != nil {
+			return err
+		}
 		findingsByOverlay[SharedScope] = findOverlaps(mergeSymbols(shared))
 		rs := make([]*StructResolver, 0, len(results))
 		for _, r := range results {
@@ -129,7 +132,7 @@ func lintOverlay(ovl Overlay, table map[string]uint32, verbose bool) ([]Symbol, 
 			}
 
 			compiler := compilerFor(src)
-			sizes, err := probeSizes(compiler, src, resolvable, verbose)
+			sizes, aliases, err := probeSizes(compiler, src, resolvable, verbose)
 			if err != nil {
 				return fmt.Errorf("%s: %w", src, err)
 			}
@@ -154,6 +157,9 @@ func lintOverlay(ovl Overlay, table map[string]uint32, verbose bool) ([]Symbol, 
 					Decls:      []Decl{d},
 				})
 			}
+			if err := applyAliases(symbols, aliases); err != nil {
+				return fmt.Errorf("%s: %w", src, err)
+			}
 			tuResults[i] = tuResult{symbols: symbols, structs: structByName}
 			return nil
 		})
@@ -171,6 +177,9 @@ func lintOverlay(ovl Overlay, table map[string]uint32, verbose bool) ([]Symbol, 
 		}
 	}
 
+	if err := validateAliasDeclarations(perTU); err != nil {
+		return nil, nil, err
+	}
 	resolver := NewStructResolver(allStructs)
 	return mergeSymbols(perTU...), resolver, nil
 }

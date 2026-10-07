@@ -25,19 +25,19 @@ var stderrLineRe = regexp.MustCompile(`probe\.c:(\d+):`)
 // real size exactly as the game's own compiler lays it out. cc1's exit code is
 // ignored on purpose: real prototype conflicts in a few files make it exit 33 while
 // still emitting full assembly, and verbose echoes its diagnostics either way.
-func probeSizes(compiler, src string, decls []Decl, verbose bool) (map[string]Size, error) {
+func probeSizes(compiler, src string, decls []Decl, verbose bool) (map[string]Size, map[string]Alias, error) {
 	if len(decls) == 0 {
-		return map[string]Size{}, nil
+		return map[string]Size{}, nil, nil
 	}
 
 	absSrc, err := filepath.Abs(src)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	dir, err := os.MkdirTemp("", "ff7lint")
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer os.RemoveAll(dir)
 
@@ -58,16 +58,16 @@ func probeSizes(compiler, src string, decls []Decl, verbose bool) (map[string]Si
 		probeLine[lineNo] = d.Name
 	}
 	if err := os.WriteFile(probePath, []byte(b.String()), 0644); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	pre, err := deps.Cpp("-Iinclude", "-Iinclude/psxsdk", "-DFF7_STR", "-lang-c", "-undef", "-fno-builtin", probePath)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	converted, err := deps.Str(pre)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	stdout, stderr, _ := deps.Cc1(compiler, converted, "-quiet", "-O2", "-G0", "-mcpu=3000", "-mgas", "-o", "-")
 	if verbose && len(stderr) > 0 {
@@ -100,9 +100,10 @@ func probeSizes(compiler, src string, decls []Decl, verbose bool) (map[string]Si
 	}
 
 	if len(sizes) == 0 && len(stdout) == 0 {
-		return nil, fmt.Errorf("probe compile produced no output:\n%s", stderr)
+		return nil, nil, fmt.Errorf("probe compile produced no output:\n%s", stderr)
 	}
-	return sizes, nil
+	aliases, err := scanAliases(stdout)
+	return sizes, aliases, err
 }
 
 func findDecl(decls []Decl, name string) Decl {
