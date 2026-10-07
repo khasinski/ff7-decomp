@@ -3574,30 +3574,9 @@ long AkaoMain(void) {
 
 extern u16 D_80062E0A;
 
-// Preserve the PS1 field accesses while using the owning objects in the native build.
-#ifdef PLATFORM_PSYZ
-#define g_Channel2ActiveMask g_AkaoBgmLanes[1].activeMask
-#define g_AkaoMusicActiveMask g_AkaoBgmLanes[0].activeMask
-#define g_Channel3OffMask g_AkaoSfxLanes[0].offMask
-#define g_Channel3KeyedMask g_AkaoSfxLanes[0].keyedMask
-#define g_Channel3OnMask g_AkaoSfxLanes[0].onMask
-#else
-// These names refer to fields in the lane objects, never independent storage.
-extern u32 g_Channel2ActiveMask;
-extern u32 g_AkaoMusicActiveMask;
-extern u32 g_Channel3OffMask;
-extern u32 g_Channel3KeyedMask;
-extern u32 g_Channel3OnMask;
-
-__asm__(".set g_Channel2ActiveMask, g_AkaoBgmLanes+0x64\n");
-__asm__(".set g_AkaoMusicActiveMask, g_AkaoBgmLanes+0x4\n");
-__asm__(".set g_Channel3OffMask, g_AkaoSfxLanes+0xC\n");
-__asm__(".set g_Channel3KeyedMask, g_AkaoSfxLanes+0x8\n");
-__asm__(".set g_Channel3OnMask, g_AkaoSfxLanes+0x4\n");
-#endif
-
 void AkaoUpdateGlobalSlides(void) {
     s32 value;
+    s16 cdSteps;
     u16 panCount;
     u16 pitchCount;
     u32 oldPitch;
@@ -3615,8 +3594,9 @@ void AkaoUpdateGlobalSlides(void) {
 
     D_80062E0A++;
     if (!(D_80062E0A & 3)) {
-        if (g_AkaoCdVolSlideSteps) {
-            g_AkaoCdVolSlideSteps--;
+        cdSteps = g_AkaoCdVolSlideSteps;
+        if (cdSteps) {
+            g_AkaoCdVolSlideSteps = cdSteps - 1;
             g_AkaoCdVol.val += g_AkaoCdVolSlideStep;
             AkaoUpdateCdVolume();
         }
@@ -3650,7 +3630,7 @@ void AkaoUpdateGlobalSlides(void) {
                 g_AkaoPitchMulMusic = value;
             }
         }
-        active = g_AkaoSfxLanes[0].activeMask;
+        active = g_AkaoSfxLanes->activeMask;
         if (active) {
             sound = g_AkaoSoundSlots[0].voices;
             mask = 0x10000;
@@ -3661,9 +3641,9 @@ void AkaoUpdateGlobalSlides(void) {
                         channel->volBalanceSlideSteps += 0xFFFF;
                         value = channel->volBalance + channel->volBalanceSlideStep;
                         if (!channel->volBalanceSlideSteps && !(value & 0xFF00) && channel->volBalanceSlideStep < 0) {
-                            g_Channel3OffMask |= mask;
-                            g_Channel3OnMask &= ~mask;
-                            g_Channel3KeyedMask &= ~mask;
+                            g_AkaoSfxLanes->offMask |= mask;
+                            g_AkaoSfxLanes->onMask &= ~mask;
+                            g_AkaoSfxLanes->keyedMask &= ~mask;
                             // Retain the original ordering of the mask and sequence pointer stores.
                             *(u8**)&sound->akaoSequencePointer = g_AkaoDummyStopSequence;
                         } else if ((value & 0xFF00) != (channel->volBalance & 0xFF00)) {
@@ -3671,10 +3651,10 @@ void AkaoUpdateGlobalSlides(void) {
                         }
                         channel->volBalance = value;
                     }
-                    if (*(u16*)&channel->volPanSlideSteps) {
-                        panCount = *(u16*)&channel->volPanSlideSteps + 0xFFFF;
+                    if (channel->volPanSlideSteps) {
+                        panCount = channel->volPanSlideSteps + 0xFFFF;
                         value = channel->volPan + channel->volPanSlideStep;
-                        *(u16*)&channel->volPanSlideSteps = panCount;
+                        channel->volPanSlideSteps = panCount;
                         if ((value & 0xFF00) != (channel->volPan & 0xFF00)) {
                             channel->voiceAttr.mask |= AKAO_UPDATE_SPU_VOICE;
                         }
@@ -3704,7 +3684,7 @@ void AkaoUpdateGlobalSlides(void) {
             sound = g_Channel2;
             mask = 1;
             state = g_AkaoVoiceWork;
-            config = &g_Channel2ActiveMask;
+            config = &g_AkaoBgmLanes[1].activeMask;
 #ifdef PLATFORM_PSYZ
             // The native build allocates the two music channel arrays separately.
             musicMask = &g_Channel1[0].voiceAttr;
@@ -3726,7 +3706,7 @@ void AkaoUpdateGlobalSlides(void) {
                             ((AkaoChannelConfig*)(config - 1))->keyedMask &= ~mask;
                             ((AkaoChannelConfig*)(config - 1))->offMask |= mask;
                         }
-                        if (mask & g_AkaoMusicActiveMask) {
+                        if (mask & g_AkaoBgmLanes[0].activeMask) {
                             musicMask->mask |= (AKAO_UPDATE_SPU_BASE | SPU_VOICE_PITCH);
                             ((AkaoChannelConfig*)(config - 1))[-1].onMask |=
                                 mask & ((AkaoChannelConfig*)(config - 1))[-1].keyedMask;

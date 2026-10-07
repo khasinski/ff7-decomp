@@ -10,7 +10,6 @@ type Symbol struct {
 	Addr       uint32
 	Size       uint32
 	LowerBound bool
-	AliasOf    string // canonical storage object for an assembler .set alias
 	Decls      []Decl
 }
 
@@ -51,9 +50,9 @@ func mergeSymbols(perTU ...[]Symbol) []Symbol {
 	return merged
 }
 
-// findOverlaps sweeps symbols sorted by address and reports pairs of independent
-// storage objects whose half-open byte ranges [Addr, Addr+Size) intersect. Verified
-// aliases of the same object and zero-size symbols never produce findings.
+// findOverlaps sweeps symbols sorted by address and reports every pair of distinct
+// names whose half-open byte ranges [Addr, Addr+Size) intersect. Zero-size symbols
+// never match anything.
 func findOverlaps(syms []Symbol) []Finding {
 	active := make([]Symbol, 0, len(syms))
 	sorted := make([]Symbol, len(syms))
@@ -74,7 +73,7 @@ func findOverlaps(syms []Symbol) []Finding {
 		active = kept
 
 		for _, a := range active {
-			if storageName(a) == storageName(s) {
+			if a.Name == s.Name {
 				continue
 			}
 			findings = append(findings, Finding{A: a, B: s})
@@ -82,11 +81,4 @@ func findOverlaps(syms []Symbol) []Finding {
 		active = append(active, s)
 	}
 	return findings
-}
-
-func storageName(s Symbol) string {
-	if s.AliasOf != "" {
-		return s.AliasOf
-	}
-	return s.Name
 }
