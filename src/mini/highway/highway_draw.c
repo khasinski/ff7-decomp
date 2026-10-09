@@ -4,12 +4,12 @@
 
 INCLUDE_ASM("asm/us/mini/highway/nonmatchings/highway_draw", HighwayDrawGauge);
 
-INCLUDE_ASM("asm/us/mini/highway/nonmatchings/highway_draw", func_800AF41C);
+INCLUDE_ASM("asm/us/mini/highway/nonmatchings/highway_draw", HighwayDrawNumber);
 
-INCLUDE_ASM("asm/us/mini/highway/nonmatchings/highway_draw", func_800AF640);
+INCLUDE_ASM("asm/us/mini/highway/nonmatchings/highway_draw", HighwayDrawNumberSmall);
 
-INCLUDE_ASM("asm/us/mini/highway/nonmatchings/highway_draw", func_800AF858);
+INCLUDE_ASM("asm/us/mini/highway/nonmatchings/highway_draw", HighwayDrawSprite);
 
-INCLUDE_ASM("asm/us/mini/highway/nonmatchings/highway_draw", func_800AF990);
+INCLUDE_ASM("asm/us/mini/highway/nonmatchings/highway_draw", HighwayKawaiModelsInit);
 
 INCLUDE_ASM("asm/us/mini/highway/nonmatchings/highway_draw", HighwayKawaiModelsUpdate);

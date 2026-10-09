@@ -69,7 +69,7 @@ void HighwayObjectIndexFree(s16 index) {
     g_HighwayObjectFreeList[index] = next;
 }
 
-INCLUDE_ASM("asm/us/mini/highway/nonmatchings/highway_object", func_800B01AC);
+INCLUDE_ASM("asm/us/mini/highway/nonmatchings/highway_object", HighwayObjectsUpdate);
 
 HighwayObject* HighwayObjectSpawn(s16 x, s16 y, s16 z, s16 type, s16 modelId) {
     g_HighwayObjectTemplate.position.vx = x;
